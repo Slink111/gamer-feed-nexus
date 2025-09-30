@@ -1,6 +1,16 @@
-import { Search, Menu, GamepadIcon, Bell, Bookmark } from "lucide-react";
+import { Search, Menu, GamepadIcon, Bell, Bookmark, User, LogOut } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 
 interface HeaderProps {
   onSearch: (query: string) => void;
@@ -8,6 +18,19 @@ interface HeaderProps {
 }
 
 const Header = ({ onSearch, searchQuery }: HeaderProps) => {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast.success("Signed out successfully");
+      navigate("/");
+    } catch (error) {
+      toast.error("Error signing out");
+    }
+  };
+
   return (
     <header className="gaming-border border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4">
@@ -44,6 +67,31 @@ const Header = ({ onSearch, searchQuery }: HeaderProps) => {
             <Button variant="ghost" size="icon" className="hover-glow">
               <Bookmark className="h-5 w-5" />
             </Button>
+            
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="hover-glow">
+                    <User className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem disabled>
+                    {user.email}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button asChild className="gaming-gradient text-white hover-glow">
+                <Link to="/auth">Login</Link>
+              </Button>
+            )}
+            
             <Button variant="ghost" size="icon" className="md:hidden">
               <Menu className="h-5 w-5" />
             </Button>
