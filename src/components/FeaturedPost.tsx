@@ -1,29 +1,31 @@
 import { Calendar, User, Eye, MessageCircle, ArrowRight } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import { useNavigate } from "react-router-dom";
 
 interface FeaturedPostProps {
   article: {
-    id: number;
+    id: string;
     title: string;
-    excerpt: string;
-    featuredImage: string;
+    excerpt: string | null;
+    image_url: string | null;
     category: string;
-    author: string;
-    publishDate: string;
-    views: number;
-    comments: number;
-    tags: string[];
+    created_at: string;
   };
-  onClick: (id: number) => void;
 }
 
-const FeaturedPost = ({ article, onClick }: FeaturedPostProps) => {
+const FeaturedPost = ({ article }: FeaturedPostProps) => {
+  const navigate = useNavigate();
+
+  const handleClick = () => {
+    navigate(`/article/${article.id}`);
+  };
+
   return (
     <div className="relative overflow-hidden rounded-xl gaming-border bg-radial-glow">
       <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/60 to-transparent z-10" />
       <img
-        src={article.featuredImage}
+        src={article.image_url || "/placeholder.svg"}
         alt={article.title}
         className="w-full h-96 object-cover"
       />
@@ -40,32 +42,32 @@ const FeaturedPost = ({ article, onClick }: FeaturedPostProps) => {
             </h1>
             
             <p className="text-lg text-muted-foreground leading-relaxed max-w-xl">
-              {article.excerpt}
+              {article.excerpt || "No excerpt available"}
             </p>
             
             <div className="flex items-center space-x-6 text-sm text-muted-foreground">
               <div className="flex items-center space-x-2">
                 <User className="h-4 w-4" />
-                <span>{article.author}</span>
+                <span>Admin</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Calendar className="h-4 w-4" />
-                <span>{article.publishDate}</span>
+                <span>{new Date(article.created_at).toLocaleDateString()}</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Eye className="h-4 w-4" />
-                <span>{article.views.toLocaleString()}</span>
+                <span>0</span>
               </div>
               <div className="flex items-center space-x-2">
                 <MessageCircle className="h-4 w-4" />
-                <span>{article.comments}</span>
+                <span>0</span>
               </div>
             </div>
             
             <Button 
               size="lg" 
               className="gaming-gradient text-white hover:scale-105 transition-transform shadow-glow group"
-              onClick={() => onClick(article.id)}
+              onClick={handleClick}
             >
               Read Full Article
               <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />

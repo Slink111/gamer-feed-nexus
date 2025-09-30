@@ -1,18 +1,77 @@
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Calendar, User, Eye, MessageCircle, Share2, Bookmark, ThumbsUp } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { ArrowLeft, Calendar, User, Eye, MessageCircle, Share2, Bookmark, ThumbsUp, Loader2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Card, CardContent, CardHeader } from "../components/ui/card";
 import { Separator } from "../components/ui/separator";
-import { mockArticles, featuredArticle } from "../data/mockData";
+
+interface Article {
+  id: string;
+  title: string;
+  content: string;
+  excerpt: string | null;
+  image_url: string | null;
+  category: string;
+  tags: string[] | null;
+  created_at: string;
+}
 
 const ArticleDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  
-  // Find article by ID (including featured article)
-  const allArticles = [...mockArticles, featuredArticle];
-  const article = allArticles.find((a) => a.id === Number(id));
+  const [article, setArticle] = useState<Article | null>(null);
+  const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchArticle = async () => {
+      if (!id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from("articles")
+          .select("*")
+          .eq("id", id)
+          .eq("published", true)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Error fetching article:", error);
+        } else {
+          setArticle(data);
+          
+          // Fetch related articles if we have a category
+          if (data?.category) {
+            const { data: related } = await supabase
+              .from("articles")
+              .select("*")
+              .eq("published", true)
+              .eq("category", data.category)
+              .neq("id", id)
+              .limit(3);
+            
+            setRelatedArticles(related || []);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching article:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchArticle();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   if (!article) {
     return (
@@ -27,10 +86,6 @@ const ArticleDetail = () => {
       </div>
     );
   }
-
-  const relatedArticles = mockArticles
-    .filter((a) => a.id !== article.id && a.category === article.category)
-    .slice(0, 3);
 
   return (
     <div className="min-h-screen bg-background">
@@ -62,19 +117,19 @@ const ArticleDetail = () => {
           <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground mb-6">
             <div className="flex items-center space-x-2">
               <User className="h-4 w-4" />
-              <span>{article.author}</span>
+              <span>Admin</span>
             </div>
             <div className="flex items-center space-x-2">
               <Calendar className="h-4 w-4" />
-              <span>{article.publishDate}</span>
+              <span>{new Date(article.created_at).toLocaleDateString()}</span>
             </div>
             <div className="flex items-center space-x-2">
               <Eye className="h-4 w-4" />
-              <span>{article.views.toLocaleString()} views</span>
+              <span>0 views</span>
             </div>
             <div className="flex items-center space-x-2">
               <MessageCircle className="h-4 w-4" />
-              <span>{article.comments} comments</span>
+              <span>0 comments</span>
             </div>
           </div>
 
@@ -95,59 +150,46 @@ const ArticleDetail = () => {
         </div>
 
         {/* Featured Image */}
-        <div className="mb-8 rounded-xl overflow-hidden gaming-border">
-          <img
-            src={article.featuredImage}
-            alt={article.title}
-            className="w-full h-96 object-cover"
-          />
-        </div>
+        {article.image_url && (
+          <div className="mb-8 rounded-xl overflow-hidden gaming-border">
+            <img
+              src={article.image_url}
+              alt={article.title}
+              className="w-full h-96 object-cover"
+            />
+          </div>
+        )}
 
         {/* Article Content */}
         <Card className="gaming-border bg-card/80 backdrop-blur-sm mb-8">
           <CardContent className="p-8">
             <div className="prose prose-invert max-w-none">
-              <p className="text-lg leading-relaxed text-muted-foreground mb-6">
-                {article.excerpt}
-              </p>
+              {article.excerpt && (
+                <p className="text-lg leading-relaxed text-muted-foreground mb-6">
+                  {article.excerpt}
+                </p>
+              )}
               
-              <div className="space-y-6 text-foreground">
-                <p>
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
-                </p>
-                
-                <p>
-                  Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
-                </p>
-                
-                <h3 className="text-2xl font-bold text-primary mt-8 mb-4">Key Highlights</h3>
-                
-                <ul className="space-y-2 ml-6">
-                  <li>Revolutionary gameplay mechanics that redefine the genre</li>
-                  <li>Stunning visual improvements with next-gen graphics</li>
-                  <li>Enhanced performance across all gaming platforms</li>
-                  <li>Innovative features that push gaming boundaries</li>
-                </ul>
-                
-                <p>
-                  Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.
-                </p>
+              <div className="space-y-6 text-foreground whitespace-pre-wrap">
+                {article.content}
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Tags */}
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold mb-4">Tags</h3>
-          <div className="flex flex-wrap gap-2">
-            {article.tags.map((tag) => (
-              <Badge key={tag} variant="outline" className="hover-glow cursor-pointer">
-                {tag}
-              </Badge>
-            ))}
+        {article.tags && article.tags.length > 0 && (
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-4">Tags</h3>
+            <div className="flex flex-wrap gap-2">
+              {article.tags.map((tag) => (
+                <Badge key={tag} variant="outline" className="hover-glow cursor-pointer">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         <Separator className="my-8" />
 
@@ -164,7 +206,7 @@ const ArticleDetail = () => {
                 >
                   <div className="relative">
                     <img
-                      src={relatedArticle.featuredImage}
+                      src={relatedArticle.image_url || "/placeholder.svg"}
                       alt={relatedArticle.title}
                       className="w-full h-32 object-cover rounded-t-lg"
                     />
@@ -179,9 +221,9 @@ const ArticleDetail = () => {
                       {relatedArticle.title}
                     </h4>
                     <div className="flex items-center text-xs text-muted-foreground">
-                      <span>{relatedArticle.author}</span>
+                      <span>Admin</span>
                       <span className="mx-2">•</span>
-                      <span>{relatedArticle.publishDate}</span>
+                      <span>{new Date(relatedArticle.created_at).toLocaleDateString()}</span>
                     </div>
                   </CardContent>
                 </Card>

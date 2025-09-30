@@ -1,31 +1,71 @@
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import Header from "../components/Header";
-import CategoryFilter from "../components/CategoryFilter";
-import NewsCard from "../components/NewsCard";
-import FeaturedPost from "../components/FeaturedPost";
-import { mockArticles, categories, featuredArticle } from "../data/mockData";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import Header from "@/components/Header";
+import CategoryFilter from "@/components/CategoryFilter";
+import NewsCard from "@/components/NewsCard";
+import FeaturedPost from "@/components/FeaturedPost";
+import { Loader2 } from "lucide-react";
+
+interface Article {
+  id: string;
+  title: string;
+  content: string;
+  excerpt: string | null;
+  image_url: string | null;
+  category: string;
+  tags: string[] | null;
+  featured: boolean;
+  published: boolean;
+  created_at: string;
+}
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const navigate = useNavigate();
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredArticles = useMemo(() => {
-    return mockArticles.filter((article) => {
-      const matchesSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          article.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          article.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-      
-      const matchesCategory = selectedCategory === "All" || article.category === selectedCategory;
-      
-      return matchesSearch && matchesCategory;
-    });
-  }, [searchQuery, selectedCategory]);
+  useEffect(() => {
+    const fetchArticles = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("articles")
+          .select("*")
+          .eq("published", true)
+          .order("created_at", { ascending: false });
 
-  const handleArticleClick = (id: number) => {
-    navigate(`/article/${id}`);
-  };
+        if (error) throw error;
+        setArticles(data || []);
+      } catch (error) {
+        console.error("Error fetching articles:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchArticles();
+  }, []);
+
+  // Filter posts based on search and category
+  const filteredPosts = articles.filter((post) => {
+    const matchesSearch = post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (post.excerpt && post.excerpt.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesCategory = selectedCategory === "All" || post.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  const featuredPost = articles.find(post => post.featured);
+  const regularPosts = filteredPosts.filter(post => !post.featured);
+
+  const categories = ["All", ...Array.from(new Set(articles.map(post => post.category)))];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -33,9 +73,11 @@ const Index = () => {
       
       <main className="container mx-auto px-4 py-8">
         {/* Featured Article */}
-        <section className="mb-12">
-          <FeaturedPost article={featuredArticle} onClick={handleArticleClick} />
-        </section>
+        {featuredPost && (
+          <section className="mb-12">
+            <FeaturedPost article={featuredPost} />
+          </section>
+        )}
 
         {/* Latest News Section */}
         <section>
@@ -50,22 +92,24 @@ const Index = () => {
             onCategorySelect={setSelectedCategory}
           />
 
-          {filteredArticles.length === 0 ? (
+          {regularPosts.length === 0 ? (
             <div className="text-center py-16">
               <div className="max-w-md mx-auto">
                 <h3 className="text-xl font-semibold mb-4">No articles found</h3>
                 <p className="text-muted-foreground">
-                  Try adjusting your search query or selecting a different category.
+                  {articles.length === 0 
+                    ? "No articles have been published yet. Check back later!" 
+                    : "Try adjusting your search query or selecting a different category."
+                  }
                 </p>
               </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredArticles.map((article) => (
+              {regularPosts.map((article) => (
                 <NewsCard
                   key={article.id}
                   article={article}
-                  onClick={handleArticleClick}
                 />
               ))}
             </div>

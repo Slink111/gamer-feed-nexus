@@ -80,6 +80,13 @@ const Header = ({ onSearch, searchQuery }: HeaderProps) => {
                     {user.email}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
+                  {/* Show admin panel link for admin users */}
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin" className="w-full">
+                      Admin Panel
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
                     <LogOut className="mr-2 h-4 w-4" />
                     Sign Out
